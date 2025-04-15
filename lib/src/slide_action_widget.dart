@@ -5,13 +5,9 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:slide_action/src/frame_change_callback_provider.dart';
-import 'package:slide_action/src/slide_action_state_mixin.dart';
+import 'package:slide_action/slide_action.dart';
 
-/// Eyeballed constant that works well for smooth thumb movement.
-const double kThumbMovementSmoothingFactor = 0.010;
-
-/// A builder that utlizes the slide action widget state to
+/// A builder that utilizes the slide action widget state to
 /// build widgets.
 ///
 /// Used to build *Track* and *Thumb* of the [SlideAction] widget.
@@ -28,6 +24,7 @@ typedef SlideActionWidgetBuilder = Widget Function(
 class SlideAction extends StatefulWidget {
   /// Create a new [SlideAction] widget
   SlideAction({
+    super.key,
     required this.trackBuilder,
     required this.thumbBuilder,
     required this.action,
@@ -41,7 +38,6 @@ class SlideAction extends StatefulWidget {
     this.disabledColorTint = Colors.white54,
     this.thumbHitTestBehavior = HitTestBehavior.opaque,
     this.thumbDragStartBehavior = DragStartBehavior.down,
-    Key? key,
   })  : assert(
           trackHeight > 0 && trackHeight.isFinite && !trackHeight.isNaN,
           "Invalid track height",
@@ -53,8 +49,7 @@ class SlideAction extends StatefulWidget {
         assert(
           actionSnapThreshold > 0.0 && actionSnapThreshold <= 1.0,
           "Value out of range",
-        ),
-        super(key: key);
+        );
 
   /// A widget builder to create the *track* of the slider.
   /// Use the provided [SlideActionStateMixin] to customize the widget.
@@ -104,7 +99,7 @@ class SlideAction extends StatefulWidget {
   /// *track* and *thumb* builders.
   final bool stretchThumb;
 
-  /// If the widget is diabled (`action == null`), this color will be used to tint the widget.
+  /// If the widget is disabled (`action == null`), this color will be used to tint the widget.
   ///
   /// **Note**: Ignored on web as color blend modes do not work properly on web.
   /// Opacity of the widget is reduced when disabled on web.
@@ -117,7 +112,7 @@ class SlideAction extends StatefulWidget {
   final DragStartBehavior thumbDragStartBehavior;
 
   @override
-  _SlideActionState createState() => _SlideActionState();
+  createState() => _SlideActionState();
 }
 
 class _SlideActionState extends State<SlideAction>
@@ -128,15 +123,13 @@ class _SlideActionState extends State<SlideAction>
 
   late double _currentThumbFraction;
 
-  late double _targetThumbFraction;
+  // late double _targetThumbFraction;
 
   late double _fingerGlobalOffsetX;
 
   late GlobalKey _trackGlobalKey;
 
   late final AnimationController _thumbAnimationController;
-
-  late final FrameChangeCallbackProvider _smoothThumbUpdateCallbackProvider;
 
   late bool _performingAction;
 
@@ -152,14 +145,10 @@ class _SlideActionState extends State<SlideAction>
     _isDragging = false;
     _performingAction = false;
     _currentThumbFraction = 0;
-    _targetThumbFraction = 0;
+    // _targetThumbFraction = 0;
     _fingerGlobalOffsetX = 0;
     _trackGlobalKey = GlobalKey();
     _thumbAnimationController = AnimationController(vsync: this);
-    _smoothThumbUpdateCallbackProvider = FrameChangeCallbackProvider(
-      vsync: this,
-      callback: _smoothUpdateThumbPosition,
-    );
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       setState(
         () => _trackRenderBox =
@@ -171,7 +160,6 @@ class _SlideActionState extends State<SlideAction>
   @override
   void dispose() {
     _thumbAnimationController.dispose();
-    _smoothThumbUpdateCallbackProvider.dispose();
     super.dispose();
   }
 
@@ -219,19 +207,6 @@ class _SlideActionState extends State<SlideAction>
     );
   }
 
-  void _smoothUpdateThumbPosition(Duration delta) {
-    final double lerp =
-        (kThumbMovementSmoothingFactor * delta.inMilliseconds).clamp(0.0, 1.0);
-
-    setState(
-      () => _currentThumbFraction = lerpDouble(
-        _currentThumbFraction,
-        _targetThumbFraction,
-        lerp,
-      )!,
-    );
-  }
-
   Alignment get _thumbAlignmentStart =>
       widget.rightToLeft ? Alignment.centerRight : Alignment.centerLeft;
 
@@ -271,7 +246,7 @@ class _SlideActionState extends State<SlideAction>
     final double fraction = _thumbAnimationController.value.clamp(0.0, 1.0);
     setState(() {
       _currentThumbFraction = fraction;
-      _targetThumbFraction = fraction;
+      // _targetThumbFraction = fraction;
     });
   }
 
@@ -338,14 +313,12 @@ class _SlideActionState extends State<SlideAction>
       _fingerGlobalOffsetX = details.globalPosition.dx - _thumbCenterPosition;
     });
     _stopAnimation();
-    _smoothThumbUpdateCallbackProvider.start();
   }
 
   void _onThumbHorizontalDragEnd(DragEndDetails details) {
     if (_performingAction) return;
     setState(() => _isDragging = false);
-    _smoothThumbUpdateCallbackProvider.stop();
-    if (_targetThumbFraction >= widget.actionSnapThreshold) {
+    if (_currentThumbFraction >= widget.actionSnapThreshold) {
       _animateThumbToEnd();
     } else {
       _animateThumbToStart();
@@ -355,7 +328,6 @@ class _SlideActionState extends State<SlideAction>
   void _onThumbHorizontalDragCancel() {
     if (_performingAction) return;
     setState(() => _isDragging = false);
-    _smoothThumbUpdateCallbackProvider.stop();
     _animateThumbToStart();
   }
 
@@ -369,7 +341,7 @@ class _SlideActionState extends State<SlideAction>
     );
 
     setState(
-      () => _targetThumbFraction = fraction,
+      () => _currentThumbFraction = fraction,
     );
   }
 

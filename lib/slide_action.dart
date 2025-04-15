@@ -1,5 +1,3 @@
-library slide_action;
-
 export 'src/slide_action_widget.dart'
     show SlideAction, SlideActionWidgetBuilder;
 
